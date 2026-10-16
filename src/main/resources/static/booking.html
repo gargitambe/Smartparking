@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Booking Details | SmartPark</title><link rel="stylesheet" href="css/style.css"></head><body><nav><a class="brand" href="index.html"><span class="brand-car" aria-hidden="true"><img src="images/smartpark-car-logo.png" alt="" /></span> SmartPark</a><div class="nav-links"><a href="dashboard.html">Dashboard</a><a href="locations.html">Locations</a><a href="my-bookings.html">My Bookings</a><a href="#" onclick="logout()">Logout</a></div></nav><main class="container"><section class="form-wrap"><div class="form-card"><div class="stepper"><span class="step">1. Slot</span><span class="step current">2. Booking Details</span><span class="step">3. Payment</span><span class="step">4. Confirmation</span></div><h1>Booking Details</h1><p class="muted">Enter your parking date, time and vehicle information.</p><form id="bookingForm"><label>Booking Date<input name="date" type="date" required></label><div class="two-col"><label>Start Time<input name="start" type="time" required></label><label>End Time<input name="end" type="time" required></label></div><label>Registered Vehicle Number<input name="vehicle" placeholder="e.g. MH 01 AB 1234" autocomplete="off" required><small class="muted">Enter the same vehicle number you used during registration. It must match to continue.</small></label><label>Parking Fee<input name="amount" type="number" value="50" readonly></label><button class="btn" type="submit">Confirm & Proceed to Payment →</button><p class="msg"></p></form></div></section></main><script src="js/app.js"></script><script>
+if(!requireLogin()){}
+const q=new URLSearchParams(location.search);
+const form=document.getElementById('bookingForm');
+const message=form.querySelector('.msg');
+const currentUser=getUser()||{};
+form.date.value=new Date().toISOString().split('T')[0];
+form.vehicle.value=currentUser.vehicleNumber||'';
+form.vehicle.required=true;
+function normalizeVehicleNumber(value){return String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
+form.addEventListener('submit',async e=>{
+ e.preventDefault(); message.textContent=''; message.className='msg';
+ const registered=normalizeVehicleNumber(currentUser.vehicleNumber);
+ const entered=normalizeVehicleNumber(form.vehicle.value);
+ if(!registered){message.textContent='No vehicle number is saved to your account. Please update your registered vehicle number before booking.';return;}
+ if(!entered){message.textContent='Please enter your registered vehicle number.';return;}
+ if(entered!==registered){message.textContent='Vehicle number does not match your registration. Please enter the same number you registered with.';form.vehicle.focus();return;}
+ try{
+  const b=await request('/bookings/user/'+currentUser.userId+'/slot/'+q.get('slotId'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bookingDate:form.date.value,startTime:form.start.value,endTime:form.end.value,vehicleNumber:form.vehicle.value.trim().toUpperCase(),amount:50,paymentStatus:'PENDING',bookingStatus:'CONFIRMED'})});
+  localStorage.setItem('smartparkBooking',JSON.stringify(b));location.href='payment.html';
+ }catch(x){message.textContent=x.message;}
+});
+</script></body></html>
